@@ -1,0 +1,799 @@
+---
+title: "Meta-Analysis workshop"
+author: "Clay Ford"
+date: "2026-09-10"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Load the meta package.
+
+```{r}
+library(meta)
+```
+
+
+## Demo of running meta-analysis in R
+
+To illustrate how meta-analysis works, let's use a small data set that comes with the meta package. Studies on the effect of mental health treatment (psychotherapy versus control). Outcome is the number of days in hospital. (Fleiss, 1993)
+
+```{r}
+data(Fleiss1993cont)
+Fleiss1993cont
+```
+
+This is continuous data. The statistical summary is the _difference in means_. This means we should use the `metacont()` function. Definition of arguments:
+
+- n.e: number in experimental group
+- mean.e: mean of experimental group
+- sd.e: standard deviation of experimental group
+- n.c: number in control group
+- mean.c: mean in control group
+- sd.c: standard deviation in control group
+- data: the data frame containing the study data
+- studlab: labels for study (optional)
+- sm: statistical summary
+    * "MD" - mean difference
+    * "SMD" - standardized mean difference
+    * "ROM" - ratio of means
+
+There are many more arguments available! Let's run a basic meta-analysis and look at the summary.
+
+```{r}
+ma1 <- metacont(n.e = n.psyc, mean.e = mean.psyc, sd.e = sd.psyc,
+               n.c = n.cont, mean.c = mean.cont, sd.c = sd.cont,
+               data = Fleiss1993cont, studlab = paste(study, year),
+               sm = "MD")  # summary measure: mean difference
+summary(ma1)
+```
+
+The fixed-effect model is called the "common effect model". It says the pooled difference in means is -0.7094 with a 95% CI of [-1.2585, -0.1603]. The p-value is 0.0113 and significant at the arbitrary 0.05 level. 
+
+The random-effect model says the pooled difference in means is -0.7509 with a 95% CI of [-1.5328;  0.0311]. The p-value is 0.0598 and not significant at the arbitrary 0.05 level. 
+
+The test of heterogeneity fails to reject the null hypothesis of studies coming from a single homogeneous population. We might prefer the common effect model. 
+
+Let's derive these calculations.
+
+### Derive per study calculations
+
+Look at first study results.
+
+```
+Davis 1973   -1.5000 [-4.7855;  1.7855]
+```
+
+Here's the raw data
+
+```{r}
+Davis <- Fleiss1993cont[1,]
+Davis
+```
+
+Calculate difference in means.
+
+```{r}
+dm <- Davis$mean.psyc - Davis$mean.cont
+dm
+```
+
+Calculate the standard error of the difference in means:
+
+$$\hat{\sigma}_{dm} = \sqrt{\frac{s_e^2}{n_e} + \frac{s^2_c}{n_c}}$$
+
+```{r}
+se <- sqrt((Davis$sd.psyc^2)/(Davis$n.psyc) + (Davis$sd.cont^2)/(Davis$n.cont))
+se
+```
+
+Calculate 95% confidence interval using standard normal distribution (1.96).
+
+```{r}
+dm + c(-1,1) * se * qnorm(p = 0.975)
+```
+
+Compare to output:
+
+```
+Davis 1973   -1.5000 [-4.7855;  1.7855]
+```
+
+### Derive common effect model pooled estimate
+
+```
+                          MD             95%-CI     z p-value
+Common effect model  -0.7094 [-1.2585; -0.1603] -2.53  0.0113
+
+```
+
+The pooled estimate is a _weighted mean_, where the weights are the inverse of the study variances.
+
+First calculate all difference in means.
+
+```{r}
+dm_all <- Fleiss1993cont$mean.psyc - Fleiss1993cont$mean.cont
+dm_all
+```
+
+Now calculate all difference-in-mean variances. Same formula as above without the square root.
+
+$$\hat{\sigma}_{dm}^2 = \frac{s_e^2}{n_e} + \frac{s^2_c}{n_c}$$
+
+```{r}
+var_all <- (Fleiss1993cont$sd.psyc^2)/(Fleiss1993cont$n.psyc) +
+                 (Fleiss1993cont$sd.cont^2)/(Fleiss1993cont$n.cont)
+var_all
+```
+
+The weights are the _inverse_ of these variances. This has the effect of giving studies with small variances (or more precise estimates) bigger weight.
+
+```{r}
+weights <- 1/var_all
+weights
+```
+
+Now compute the weighted mean to get the fixed effect (common effect) pooled estimate.
+
+```{r}
+pooled_dm <- weighted.mean(dm_all, weights)
+pooled_dm
+```
+
+Or to be more explicit:
+
+```{r}
+sum(dm_all*weights)/sum(weights)
+```
+
+Compare to output:
+
+```
+                          MD             95%-CI     z p-value
+Common effect model  -0.7094 [-1.2585; -0.1603] -2.53  0.0113
+
+```
+
+The variance of the pooled estimate is the inverse of the sum of the weights, where k indexes the study.
+
+$$\hat{\sigma}^2_{pooled} = \frac{1}{\sum w_k}$$ 
+
+```{r}
+pooled_var <- 1/sum(weights)
+pooled_var
+```
+
+We can use this to derive the 95% confidence interval of the pooled estimate. Again calculated using standard normal distribution (1.96).
+
+```{r}
+pooled_dm + c(-1,1)*sqrt(pooled_var)*qnorm(0.975)
+```
+
+Compare to output:
+
+```
+                          MD             95%-CI     z p-value
+Common effect model  -0.7094 [-1.2585; -0.1603] -2.53  0.0113
+
+```
+
+The z-value is the pooled difference in means divided by the pooled standard error:
+
+```{r}
+z <- pooled_dm/sqrt(pooled_var)
+z
+```
+
+The p-value is the two-sided probability of getting a test statistic that big or bigger (or that small or smaller) assuming the difference in means is really 0.
+
+```{r}
+pnorm(q = z) * 2
+```
+
+### Derive random effect model pooled estimate
+
+Recall the random effect model estimate:
+
+```
+                          MD             95%-CI     z p-value
+Random effects model -0.7509 [-1.5328;  0.0311] -1.88  0.0598
+```
+
+Let's show to calculate this.
+
+The estimated differences in means and variances are the same.
+
+```{r}
+dm_all
+```
+
+```{r}
+var_all
+```
+
+The random effect model assumes studies come from a _heterogeneous_ population. The pooled estimate is also a weighted mean but the _weights include an estimate of between study variability_, $\tau^2$.
+
+There are currently _eight different methods_ for estimating the between study variability, $\tau^2$, in the meta package! The default is the restricted maximum-likelihood estimator (REML). 
+
+The estimate $\tau^2$ value is in the model object, `ma1$tau2`.
+
+```{r}
+ma1$tau2
+```
+
+This is added to the variances when calculating the weights, as follows:
+
+```{r}
+weights_r <- 1/(var_all + ma1$tau2)
+weights_r
+```
+
+Now use the weights to calculate the pooled difference in means.
+
+```{r}
+pooled_dm_r <- weighted.mean(dm_all, weights_r)
+pooled_dm_r
+```
+
+Compare to output:
+
+```
+                          MD             95%-CI     z p-value
+Random effects model -0.7509 [-1.5328;  0.0311] -1.88  0.0598
+```
+
+Once again, the variance of the pooled estimate is the inverse of the sum of the random effect weights, where k indexes the study.
+
+$$\hat{\sigma}^2_{pooled} = \frac{1}{\sum w_k}$$
+
+```{r}
+pooled_var_r <- 1/sum(weights_r)
+pooled_var_r
+```
+
+We can use this to derive the 95% confidence interval of the pooled random effect estimate.
+
+```{r}
+pooled_dm_r + c(-1,1)*sqrt(pooled_var_r)*qnorm(0.975)
+```
+
+Compare to output:
+
+```
+                          MD             95%-CI     z p-value
+Random effects model -0.7509 [-1.5328;  0.0311] -1.88  0.0598
+```
+
+Likewise, The z-value is the pooled difference in means divided by the pooled standard error:
+
+```{r}
+z_r <- pooled_dm_r/sqrt(pooled_var_r)
+z_r
+```
+
+The p-value is the two-sided probability of getting a test statistic that big or bigger (or that small or smaller) assuming the test difference in means is really 0.
+
+```{r}
+pnorm(z_r) * 2
+```
+
+### Derive the weights
+
+Recall the meta-analysis output. Notice the common and random weights are expressed as percentages. Also notice the random weights are bigger for smaller studies compared to the common weights. 
+
+```
+                  MD             95%-CI %W(common) %W(random)
+Davis 1973   -1.5000 [-4.7855;  1.7855]        2.8        5.2
+Florell 1971 -1.2000 [-2.0837; -0.3163]       38.6       33.3
+Gruen 1975   -2.4000 [-6.1078;  1.3078]        2.2        4.1
+Hart 1975     0.2000 [-0.7718;  1.1718]       31.9       30.6
+Wilson 1977  -0.8800 [-1.9900;  0.2300]       24.5       26.8
+
+```
+
+These are easy to derive. Just the weights expressed as a percentage of the total weights.
+
+```{r}
+# common/fixed effect weights
+round(weights/sum(weights) * 100, 1)
+```
+
+```{r}
+# random effect weights
+round(weights_r/sum(weights_r) * 100, 1)
+```
+
+
+### Derive heterogeneity measures
+
+Recall the heterogeneity portion of the summary output:
+
+```
+Quantifying heterogeneity (with 95%-CIs):
+ tau^2 = 0.2742 [0.0000; 5.8013]; tau = 0.5236 [0.0000; 2.4086]
+ I^2 = 29.3% [0.0%; 72.6%]; H = 1.19 [1.00; 1.91]
+
+Test of heterogeneity:
+    Q d.f. p-value
+ 5.66    4  0.2260
+
+```
+
+Let's show how the heterogeneity measures are calculated, save for $\tau^2$.
+
+Q is the weighted sum of squares about the fixed effect pooled estimate, where k indicates the study.
+
+$$Q = \sum w_k(\hat{\theta}_k - \hat{\theta}_{F})^2 $$
+
+We can calculate Q using previously calculated measures
+
+```{r}
+Q <- sum(weights * (dm_all - pooled_dm)^2)
+Q
+```
+
+Under the null that studies come from a single homogeneous population, the Q statistic has a chi-square distribution with K-1 degrees of freedom. We have 5 studies, so K = 4.
+
+```{r}
+pchisq(q = Q, df = 5 - 1, lower.tail = FALSE)
+```
+
+I^2 is derived from Q. 0 implies no heterogeneity.
+
+$$I^2 = max\{0,[Q-(K-1)]/Q\}$$
+
+```{r}
+K <- 5  # 5 studies
+I2 <- (Q - (K - 1))/Q * 100
+I2
+```
+
+
+H is also derived from Q. 1 implies no heterogeneity.
+
+$$H = \sqrt{\frac{Q}{K-1}} $$
+
+```{r}
+H <- sqrt(Q/(K - 1))
+H
+```
+
+
+### Forest plot
+
+Once we have run a meta-analysis, we usually want to create a forest plot which visualizes the results. The `forest()` function has nice defaults.
+
+```{r}
+forest(ma1)
+```
+
+The `forest()` function has about 100 arguments and is highly customizable. Below we change some labels, sort the mean differences in descending order, and remove the random effect model result.
+
+```{r}
+forest(ma1, 
+       sortvar = -TE,     # sort in decreasing order of treatment effect
+       random = FALSE,    # suppress random effect model result
+       label.e = "Psychotherapy",
+       label.c = "Control",
+       label.left = "Favors Psycotherapy", 
+       label.right = "Favors Control")
+```
+
+Can also save as a file using the `file` argument. Probably want to crank up the width. The height is automatically determined when saving to file. 
+
+```{r}
+forest(ma1, 
+       file = "forest.png",    # name of file
+       width = 1024,           # width of file 
+       sortvar = -TE,     
+       random = FALSE,    
+       label.e = "Psychotherapy",
+       label.c = "Control",
+       label.left = "Favors Psycotherapy", 
+       label.right = "Favors Control")
+```
+
+
+## Meta-analysis for binary data.
+
+The following code produces a data frame with five studies from the Vitamin D meta-analysis (Zhang et al. 2019) 
+
+```{r}
+vitamin <- data.frame(study = c("Trivedi 2003", "RECORD 2012", 
+                                "Martineau 2015",
+                                "ViDA 2017", "VITAL 2018"),
+                      vd_events = c(63, 151, 1, 28, 154),
+                      vd_total = c(1345, 2649, 122, 2558, 12927),
+                      ctrl_events = c(72, 178, 1, 30, 187),
+                      ctrl_total = c(1341, 2643, 118, 2550, 12944))
+vitamin
+```
+
+The studies investigated the effect of Vitamin D supplement on reducing risk of cancer mortality (Vitamin D versus control). Outcome is number of events. Statistical summary is risk ratio. This means we should use the `metabin()` function.
+
+```{r}
+ma2 <- metabin(event.e = vd_events, n.e = vd_total, 
+               event.c = ctrl_events, n.c = ctrl_total, 
+               data = vitamin, 
+               studlab = study, 
+               sm = "RR") # summary measure: risk ratio
+summary(ma2)
+```
+
+Notice the common and random effect models are about the same. That's because $tau^2$ is estimated to be 0. That means the weights are about the same in both groups. 
+
+Also notice that even though all of the studies have confidence intervals that overlap 1, the confidence interval for the pooled estimate _does not_. (For ratios, 1 implies no difference in the groups.)
+
+Recall the risk ratio is a ratio of one probability to another.
+
+```{r}
+vitamin[1,]
+```
+
+```{r}
+v_prob <- 63/1345
+ctrl_prob <- 72/1341
+round(v_prob/ctrl_prob, 4)
+```
+
+Let's (almost) replicate the forest plot in the publication.
+
+```{r}
+forest(ma2,  
+       random = FALSE,    
+       label.e = "Vitamin D",
+       label.c = "Control",
+       label.left = "Favors Vitamin D", 
+       label.right = "Favors Control",
+       smlab = "Risk ratio\n(95% CI)",
+       overall = TRUE,
+       test.overall.common = TRUE,
+       print.Q = TRUE,
+       xlim = c(0.2, 5),
+       pooled.events = TRUE,
+       rightcols = c("w.common", "effect", "ci"),
+       rightlabs = c("Weight\n(%)", "RR", "95% CI"))
+```
+
+Back to the presentation to talk about publication bias.
+
+## Publication Bias and Funnel Plots
+
+Moore et al. (1998) conducted a systematic review of 37 randomized placebo-controlled trials on the effectiveness and safety of topical non-steroidal anti-inflammatory drugs (NSAIDS) in acute pain. The main outcome was treatment success, defined as a reduction in pain of at least 50%.
+
+Moore, R. A., Tramèr, M. R., Carroll, D., et al. (1998). Quantitative systematic Review of topically applied non-steroidal anti-inflammatory drugs. British Medical Journal, 316, 333-38.
+
+This data set is used as an example in Schwarzer et al. (2015).
+
+```{r}
+data("Moore1998")
+head(Moore1998)
+```
+
+Let's replicate the meta-analysis. Notice the summary measure is the odds ratio, so we specify `sm = "OR"`
+
+```{r}
+ma3 <- metabin(event.e = Ee, n.e = Ne, 
+               event.c = Ec, n.c = Nc, 
+               data = Moore1998,
+               sm = "OR", 
+               studlab = paste(author, year),
+               label.e = "NSAIDS", 
+               label.c = "Placebo")
+summary(ma3)
+```
+
+Derive odds ratio for first study.
+
+```
+Airaksinen    4.4571 [1.3106;   15.1581]
+```
+
+```{r}
+Moore1998[1,]
+```
+
+Calculate estimated probabilities
+
+```{r}
+p_exp <- 24/29
+p_ctrl <- 14/27
+c(p_exp, p_ctrl)
+```
+
+Convert to odds:
+
+```{r}
+odds_exp <- p_exp/(1 - p_exp)
+odds_ctrl <- p_ctrl/(1 - p_ctrl)
+c(odds_exp, odds_ctrl)
+```
+
+Odds ratio:
+
+```{r}
+odds_exp/odds_ctrl
+```
+
+Odds of success in experimental groups are about 4.5 times higher than the odds of success in the control group. 
+
+The pooled odds ratio estimates are large and precise.
+
+```
+                         OR           95%-CI     z  p-value
+Common effect model  2.9809 [2.5854; 3.4368] 15.04 < 0.0001
+Random effects model 3.7519 [2.8052; 5.0182]  8.91 < 0.0001
+```
+
+Let's check for publication bias (small study effects) using a funnel plot.
+
+```{r}
+funnel(ma3)
+```
+
+The dashed line in the middle of the triangle is the common effect estimate. The dotted line is the random effect estimate. Either or both can be suppressed by setting `common` and/or `random` to FALSE. 
+
+Create Contour-Enhanced Funnel Plot. Set `type = "contour"`.
+
+```{r}
+funnel(ma3, type = "contour")
+```
+
+Adding a legend takes some extra work using the `legend()` function. Save the funnel plot to an object and use the `text.contour` and `col.contour` element to create the legend.
+
+```{r}
+fun <- funnel(ma3, type = "contour")
+legend(0.4, 1.1,
+       fun$text.contour,
+       fill = fun$col.contour, 
+       bty="n")   # no box around legend
+```
+
+Clear example of asymmetry. All of the smaller studies exhibit significance while some of the larger studies do not. This is strong evidence of publication bias.
+
+We can also test for asymmetry. 
+
+## Tests for funnel plot asymmetry
+
+### Generic tests
+
+Null hypothesis: no association between effect size and precision.
+
+Generic tests: 
+"Begg", "Egger", "Thompson". 
+
+Notice the output includes a reference. See `help(metabias)` for the full reference.
+
+```{r}
+metabias(ma3, method.bias = "Begg")
+```
+
+
+```{r}
+metabias(ma3, method.bias = "Egger")
+```
+
+
+```{r}
+metabias(ma3, method.bias = "Thompson")
+```
+
+### Tests for binary outcomes
+
+Can also use tests specific to binary outcomes: 
+"Harbord", "Macaskill", "Peters", or "Schwarzer"
+
+```{r}
+metabias(ma3, method.bias = "Harbord")
+```
+
+
+```{r}
+metabias(ma3, method.bias = "Macaskill")
+```
+
+
+Back to the presentation to talk about subgroup analyses and meta-regression.
+
+## Subgroup analysis
+
+Poole and Black (2003) performed a meta-analysis of 19 studies on mucolytic agents versus placebo for patients with chronic bronchitis and/or chronic obstructive pulmonary disease (COPD). Outcome: mean number of acute exacerbations per month. Acute exacerbation is defined as an increase in cough and in the volume and/or purulence of sputum.
+
+Poole, P.J., Black, P.N. (2003). Mucolytic agents for chronic bronchitis or chronic obstructive pulmonary disease. Cochrane Database of Systematic Reviews, 1, doi:10.1002/14651858.CD001287
+
+This data set is used as an example in Schwarzer et al. (2015).
+
+```{r}
+data("Poole2003")
+head(Poole2003) # duration is study duration
+```
+
+Since the outcome was difference in means, do the meta-analysis using `metacont()`
+
+```{r}
+ma4 <- metacont(n.e = Ne, mean.e = Me, sd.e = Se, 
+                n.c = Nc, mean.c = Mc, sd.c = Sc, 
+                data = Poole2003,
+                studlab = paste(author, year), 
+                sm = "MD")
+summary(ma4)
+```
+
+Get a warning because some studies have 0 for standard error.
+
+```{r}
+subset(Poole2003, Se == 0 | Sc == 0)
+```
+
+Look at summary of meta-analysis
+
+```{r}
+summary(ma4)
+```
+
+The mucolytic agents seem to help reduce acute exacerbations per month. There does seem to be significant heterogeneity according to the Q and I^2 statistics. But tau^2 is pretty small.
+
+The forest plot reveals one very uncertain study (the first study). Likely the source of the heterogeneity. (The standard deviations of 3.76 and 4.58 almost seems like typos compared to the other studies.)
+
+```{r}
+forest(ma4)
+```
+
+Let's decrease the x limits to zoom in on the other studies.
+
+```{r}
+forest(ma4, xlim = c(-0.5, 0.5))
+```
+
+Let's use the duration variable to perform a subgroup analysis. Add `subgroup = duration` to the `metacont()` function.
+
+```{r}
+ma4.sg <- metacont(n.e = Ne, mean.e = Me, sd.e = Se, 
+                   n.c = Nc, mean.c = Mc, sd.c = Sc, 
+                   data = Poole2003,
+                   studlab = paste(author, year), 
+                   sm = "MD",
+                   subgroup = duration)   # perform a subgroup analysis
+
+ma4.sg  # print object instead of using summary()
+```
+
+We get pooled difference in means estimates for each group as well as tests for subgroup differences. Both are done for common effect and random effects models. Let's look at each.
+
+### common effect model
+
+```
+Results for subgroups (common effect model):
+                        k      MD             95%-CI     Q   I^2
+duration = ≤ 3 months   4 -0.1310 [-0.1688; -0.0931] 22.43 86.6%
+duration = > 3 months  13 -0.0591 [-0.0713; -0.0470] 70.79 83.0%
+
+Test for subgroup differences (common effect model):
+                   Q d.f.  p-value
+Between groups 12.55    1   0.0004
+Within groups  93.22   15 < 0.0001
+
+```
+
+The results for the fixed effect model shows that between-group heterogeneity (Q = 12.55) is statistically significant. However the fixed effect estimates (-0.13, short duration; -0.06, long duration) are not that different. The difference is significant _but may not be clinically meaningful_. The common effect model also tests for within group heterogeneity (Q = 93.22). This is also significant. But based on the forest plot not sure it's clinically meaningful.
+
+### random effects model
+
+```
+Results for subgroups (random effects model):
+                        k      MD             95%-CI  tau^2    tau
+duration = ≤ 3 months   4 -0.2742 [-0.4819; -0.0665] 0.0297 0.1724
+duration = > 3 months  13 -0.0821 [-0.1163; -0.0478] 0.0028 0.0527
+
+Test for subgroup differences (random effects model):
+                  Q d.f. p-value
+Between groups 3.20    1  0.0736
+```
+
+The random effects model shows slightly different results. The test for subgroup differences has a much smaller test statistic (Q = 3.2) and is not significant at the 0.05 level. The pooled random effect estimates are also not that different (-0.27, short duration; -0.08, long duration). The more conservative random effect confidence intervals overlap.
+
+There is no separate random effects within-group test for heterogeneity. That's already performed with tau^2.
+
+### Forest plot for subgroups
+
+We can add the subgroups to the forest plot by adding `subgroup = TRUE`.
+
+```{r}
+forest(ma4.sg, xlim = c(-0.5, 0.5), subgroup = TRUE)
+```
+
+The subgroup test results differ between common effect and random effects models. But on the other hand, the <= 3 months group only has four studies. It's difficult to reach a conclusion either way. However, it does seem like duration could explain some of the heterogeneity based on the forest plot. 
+
+## Meta-regression
+
+Results from 28 trials evaluating effect of serum cholesterol reduction on reducing ischaemic heart disease (IHD) events. The outcome is IHD events (both fatal and non-fatal myocardial infarction events were counted). The summary measure is odds ratio.
+
+The data come from the following paper:
+Thompson, S. G. Sharp, S. J. (1999). Explaining heterogeneity in meta-analysis: a comparison of methods. Statistics in Medicine, 18: 2693-708
+
+Notice the data contains a covariate: cholr, the cholesterol reduction in each trial (mmol/l)
+
+```{r}
+data("Thompson1999")
+head(Thompson1999)
+```
+
+Fit the meta-analysis. Notice we need to add the "ihd" and "noihd" columns to get the totals for each group.
+
+```{r}
+ma5 <- metabin(event.e = ihd.exp, n.e = ihd.exp + noihd.exp, 
+               event.c = ihd.cont, n.c = ihd.cont + noihd.cont,
+               data = Thompson1999, 
+               sm = "OR")
+summary(ma5)
+```
+
+Looks like serum cholesterol reduction is expected to decrease IHD events by about 20%. However, there appears to be a fair amount of heterogeneity between studies (Q = 46.69, I^2 = 45.7%). Looking at a forest plot can put the heterogeneity measures into perspective.
+
+```{r}
+forest(ma5)
+```
+
+The degree of heterogeneity between studies seems moderate. Perhaps the cholesterol reduction in each trial can help explain some of the heterogeneity.
+
+Let's run a meta-regression using the `metareg()` function.
+
+```{r}
+ma5.mr <- metareg(ma5, ~cholr)
+ma5.mr
+```
+
+Naive interpretation of cholr coefficient: every one unit decrease in cholesterol reduction reduces the log odds of IHD events by about 0.5. 
+
+The intercept coefficient is expected log odds when cholr = 0. That doesn't make sense.
+
+We should probably center cholor around its mean. This will make the intercept interpretable.
+
+```{r}
+Thompson1999$cholr_c <- Thompson1999$cholr - mean(Thompson1999$cholr)
+
+# need to re-un meta-analysis
+ma5 <- metabin(event.e = ihd.exp, n.e = ihd.exp + noihd.exp, 
+               event.c = ihd.cont, n.c = ihd.cont + noihd.cont,
+               data = Thompson1999, sm = "OR")
+
+# meta-regression with centered cholr_c 
+ma5.mr2 <- metareg(ma5, ~cholr_c)
+ma5.mr2
+```
+
+The cholr coefficient does not change, but the intercept has an interpretation. It's the expected log odds of IHD events when cholr is at the mean level (0.78).
+
+```{r}
+mean(Thompson1999$cholr)
+```
+
+Adding the cholr covariate to the meta-analysis has reduced the between studies heterogeneity from a significant Q = 46.69 (p = 0.0049) to non-significant Q = 37.87 (p = 0.06). (Though I don't think p = 0.06 decisively means there is no between studies heterogeneity. It just means we meaningfully reduced the amount of between studies heterogeneity.)
+
+```
+Test for Residual Heterogeneity:
+QE(df = 26) = 37.8663, p-val = 0.0623
+```
+
+We can use a bubble plot to visualize meta-regression using the bubble function. The fitted line corresponds to the slope coefficient of -0.5. Bigger bubbles correspond to bigger studies. 
+
+
+```{r}
+bubble(ma5.mr2)
+```
+
+Finally we can look at funnel plot. Notice the plot looks different. This is because the meta-regression was fit using the `rma.uni()` function in the metafor package.
+
+```{r}
+funnel(ma5.mr2)
+```
+
+Since the meta-regression was performed with the metafor package, we need to use functions from the metafor package to test the funnel plot for asymmetry. Below we use the `regtest()` function, which implements Egger's test. We fail to reject the null hypothesis of no association between effect size and precision.
+
+```{r}
+metafor::regtest(ma5.mr2)
+```
+
+End of workshop.
