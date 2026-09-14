@@ -27,15 +27,15 @@ Fleiss1993cont
 
 This is continuous data. The statistical summary is the _difference in means_. This means we should use the `metacont()` function. Definition of arguments:
 
-- n.e: number in experimental group
-- mean.e: mean of experimental group
-- sd.e: standard deviation of experimental group
-- n.c: number in control group
-- mean.c: mean in control group
-- sd.c: standard deviation in control group
-- data: the data frame containing the study data
-- studlab: labels for study (optional)
-- sm: statistical summary
+- `n.e`: number in experimental group
+- `mean.e`: mean of experimental group
+- `sd.e`: standard deviation of experimental group
+- `n.c`: number in control group
+- `mean.c`: mean in control group
+- `sd.c`: standard deviation in control group
+- `data`: the data frame containing the study data
+- `studlab`: labels for study (optional)
+- `sm`: statistical summary
     * "MD" - mean difference
     * "SMD" - standardized mean difference
     * "ROM" - ratio of means
@@ -371,11 +371,19 @@ H
 
 ### Forest plot
 
-Once we have run a meta-analysis, we usually want to create a forest plot which visualizes the results. The `forest()` function has nice defaults.
+Once we have run a meta-analysis, we usually want to create a forest plot which visualizes the results. The `forest()` function has nice defaults. When creating in R Markdown, you may need to click the “show in new window" button so you can see the entire plot.
 
 ```{r}
 forest(ma1)
 ```
+
+Some tips for interpretation:
+
+- The bolded common/random effects results are the meta-analysis results.
+- The p-value is for the test of heterogeneity. (Null is no heterogeneity) This can help us choose between the common effect or random effect model. 
+- The squares indicate precision of the study. Bigger squares mean more precise effects and bigger weights. 
+- The individual lines are the confidence intervals for the studies.
+- The diamonds represent meta-analysis results. Right and left sides of the diamond correspond to lower and upper confidence limits.
 
 The `forest()` function has about 100 arguments and is highly customizable. Below we change some labels, sort the mean differences in descending order, and remove the random effect model result.
 
@@ -389,11 +397,13 @@ forest(ma1,
        label.right = "Favors Control")
 ```
 
-Can also save as a file using the `file` argument.  
+Can also save as a file using the `filename` argument. I save as a png flie below, but other file options include "eps", "ps", "tex" (pictex), "pdf", "jpeg", "tiff", "png", "bmp", "svg" or "wmf".
+
+If running this in R Markdown, the file is saved where the Rmd file is located. Otherwise, the file is saved in your default working directory.
 
 ```{r}
 forest(ma1, 
-       file = "forest.png",    # name of file
+       filename = "forest.png",    # name of file
        sortvar = -TE,     
        random = FALSE,    
        label.e = "Psychotherapy",
@@ -402,6 +412,7 @@ forest(ma1,
        label.right = "Favors Control")
 ```
 
+Alternatively, can run code from console and use the Plots window to save the plot.
 
 ## Meta-analysis for binary data.
 
@@ -418,7 +429,18 @@ vitamin <- data.frame(study = c("Trivedi 2003", "RECORD 2012",
 vitamin
 ```
 
-The studies investigated the effect of Vitamin D supplement on reducing risk of cancer mortality (Vitamin D versus control). Outcome is number of events. Statistical summary is risk ratio. This means we should use the `metabin()` function.
+The studies investigated the effect of Vitamin D supplement on reducing risk of cancer mortality (Vitamin D versus control). Outcome is number of cancer deaths (events). Statistical summary is risk ratio. This means we should use the `metabin()` function. Definition of arguments:
+
+- `event.e`: number events in experimental group
+- `n.e`: total observations in experimental group
+- `event.c`: number events in control group
+- `n.c`: total observations in control group
+- `data`: the data frame containing the study data
+- `studlab`: labels for study (optional)
+- `sm`: statistical summary
+    * "RR" - risk ratio
+    * "OR" - odds ratio
+    * "RD" - risk difference
 
 ```{r}
 ma2 <- metabin(event.e = vd_events, n.e = vd_total, 
@@ -784,7 +806,7 @@ Test for Residual Heterogeneity:
 QE(df = 26) = 37.8663, p-val = 0.0623
 ```
 
-We can use a bubble plot to visualize meta-regression using the bubble function. The fitted line corresponds to the slope coefficient of -0.5. Bigger bubbles correspond to bigger studies. 
+We can use a bubble plot to visualize meta-regression using the bubble function. The fitted line corresponds to the slope coefficient of -0.5. Bigger bubbles correspond to more precise studies. Technically, the size of the plotting symbol is inversely proportional to the variance of the estimated treatment effect. (i.e., smaller the variance, larger the bubble)
 
 
 ```{r}
