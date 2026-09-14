@@ -109,7 +109,7 @@ Common effect model  -0.7094 [-1.2585; -0.1603] -2.53  0.0113
 
 ```
 
-The pooled estimate is a _weighted mean_, where the weights are the inverse of the study variances.
+The pooled estimate is a _weighted mean_, where the weights are the inverse of the study variances. Why not just take the regular mean of all the difference-in-means? Because some studies are bigger and more precise and should count more when calculating the mean.
 
 First calculate all difference in means.
 
@@ -118,7 +118,15 @@ dm_all <- Fleiss1993cont$mean.psyc - Fleiss1993cont$mean.cont
 dm_all
 ```
 
-Now calculate all difference-in-mean variances. Same formula as above without the square root.
+We could stop here and just take the mean of those values:
+
+```{r}
+mean(dm_all)
+```
+
+But this gives all the studies the _same weight and importance_. We want to give more weight to the studies with a more precise estimate. To do this we'll use the difference-in-mean _variances_.
+
+To calculate all difference-in-mean _variances_, use formula as above without the square root.
 
 $$\hat{\sigma}_{dm}^2 = \frac{s_e^2}{n_e} + \frac{s^2_c}{n_c}$$
 
@@ -323,11 +331,11 @@ Test of heterogeneity:
 
 Let's show how the heterogeneity measures are calculated, save for $\tau^2$.
 
-Q is the weighted sum of squares about the fixed effect pooled estimate, where k indicates the study.
+Q is the weighted sum of squares about the fixed effect pooled estimate, where k indicates the study. Q basically measures how variable the study results are. If studies are similar, we expect a small Q value. If studies are very different, we expect a big Q value.
 
 $$Q = \sum w_k(\hat{\theta}_k - \hat{\theta}_{F})^2 $$
 
-We can calculate Q using previously calculated measures
+We can calculate Q using previously calculated measures (using the weights, difference in means, and the pooled difference in means). 
 
 ```{r}
 Q <- sum(weights * (dm_all - pooled_dm)^2)
@@ -381,12 +389,11 @@ forest(ma1,
        label.right = "Favors Control")
 ```
 
-Can also save as a file using the `file` argument. Probably want to crank up the width. The height is automatically determined when saving to file. 
+Can also save as a file using the `file` argument.  
 
 ```{r}
 forest(ma1, 
        file = "forest.png",    # name of file
-       width = 1024,           # width of file 
        sortvar = -TE,     
        random = FALSE,    
        label.e = "Psychotherapy",
@@ -530,7 +537,7 @@ Random effects model 3.7519 [2.8052; 5.0182]  8.91 < 0.0001
 Let's check for publication bias (small study effects) using a funnel plot.
 
 ```{r}
-funnel(ma3)
+funnel(ma3, random = FALSE)
 ```
 
 The dashed line in the middle of the triangle is the common effect estimate. The dotted line is the random effect estimate. Either or both can be suppressed by setting `common` and/or `random` to FALSE. 
@@ -745,7 +752,7 @@ ma5.mr <- metareg(ma5, ~cholr)
 ma5.mr
 ```
 
-Naive interpretation of cholr coefficient: every one unit decrease in cholesterol reduction reduces the log odds of IHD events by about 0.5. 
+Naive interpretation of cholr coefficient: every one unit increase in cholesterol reduction reduces the log odds of IHD events by about 0.5. 
 
 The intercept coefficient is expected log odds when cholr = 0. That doesn't make sense.
 

@@ -30,7 +30,12 @@ Refers to the analysis of analyses. (Glass, 1976)
 
 A systematic literature review that uses statistics to **combine results** and achieve greater generalizability of findings than any single study. (Hothorn and Everitt, 2014)
 
-An attempt to **pool the results** of individual studies into a single analysis with the intention to produce a message where before there was none, or to make the message clearer, or to resolve an apparent contradiction in messages, or to assess whether the message changes from subgroup to subgroup. (Senn, 2007)
+An attempt to **pool the results** of individual studies into a single analysis with the intention...    
+
+- to produce a message where before there was none, or 
+- to make the message clearer, or 
+- to resolve an apparent contradiction in messages, or 
+- to assess whether the message changes from subgroup to subgroup. (Senn, 2007)
 
 <!-- Sometimes called _Cochrane Reviews_, due to the [Cochrane Library](https://www.cochranelibrary.com/) that maintains a collection of systematic reviews. -->
 
