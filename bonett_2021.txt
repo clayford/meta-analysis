@@ -1,0 +1,2 @@
+I2 is not a useful measure of effect-size heterogeneity because it depends on the within-study sample sizes. I2 will be smaller with smaller within-study sample sizes and larger with larger within-study sample sizes. Furthermore, I2 not an estimate of any population parameter because its value depends
+of the within-study sample sizes. The reporting of I2 is not recommended

@@ -348,7 +348,8 @@ Under the null that studies come from a single homogeneous population, the Q sta
 pchisq(q = Q, df = 5 - 1, lower.tail = FALSE)
 ```
 
-I^2 is derived from Q. 0 implies no heterogeneity.
+I^2 is derived from Q. I^2 tells us what proportion of the observed variance in the studies is likely to remain if we could somehow remove the sampling error. 
+
 
 $$I^2 = max\{0,[Q-(K-1)]/Q\}$$
 

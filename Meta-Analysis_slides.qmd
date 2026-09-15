@@ -317,6 +317,8 @@ See also the PRISMA (Preferred Reporting Items for Systematic reviews and Meta-A
 
 - Bonnet DG (2021). Introduction to Meta-analysis. <https://dgbonett.sites.ucsc.edu/statistical-methods-for-psychologists/>
 
+- Borenstein, M., Higgins, J. P. T., Hedges, L. V., and Rothstein, H. R. (2017) Basics of meta-analysis: I2 is not an absolute measure of heterogeneity. Res. Syn. Meth., 8: 5–18. doi: 10.1002/jrsm.1230. 
+
 - Chalmers T and Lau J. (1993). “Meta-Analytic Stimulus for Changes in Clinical Trials.” Statistical Methods in Medical Research 2 (2): 161–72. <https://doi.org/10.1177/096228029300200204>.
 
 - Fleiss J. (1993). “Review Papers: The Statistical Basis of Meta-Analysis.” *Statistical Methods in Medical Research* 2 (2): 121–45. <https://doi.org/10.1177/096228029300200202>.
