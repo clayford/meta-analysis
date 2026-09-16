@@ -677,7 +677,7 @@ Let's decrease the x limits to zoom in on the other studies.
 forest(ma4, xlim = c(-0.5, 0.5))
 ```
 
-Let's use the duration variable to perform a subgroup analysis. Add `subgroup = duration` to the `metacont()` function.
+Let's use the study duration variable to perform a subgroup analysis. The duration variable is a binary variable that takes two values: <= 3 months or >3 months. Of interest is whether study duration helps explain some of the heterogeneity in the previous meta-analysis. Add `subgroup = duration` to the `metacont()` function.
 
 ```{r}
 ma4.sg <- metacont(n.e = Ne, mean.e = Me, sd.e = Se, 
@@ -743,7 +743,7 @@ Results from 28 trials evaluating effect of serum cholesterol reduction on reduc
 The data come from the following paper:
 Thompson, S. G. Sharp, S. J. (1999). Explaining heterogeneity in meta-analysis: a comparison of methods. Statistics in Medicine, 18: 2693-708
 
-Notice the data contains a covariate: cholr, the cholesterol reduction in each trial (mmol/l)
+Notice the data contains a covariate: cholr, the mean cholesterol reduction in each trial (mmol/l).
 
 ```{r}
 data("Thompson1999")
@@ -766,7 +766,7 @@ Looks like serum cholesterol reduction is expected to decrease IHD events by abo
 forest(ma5)
 ```
 
-The degree of heterogeneity between studies seems moderate. Perhaps the cholesterol reduction in each trial can help explain some of the heterogeneity.
+The degree of heterogeneity between studies seems moderate. Perhaps the mean cholesterol reduction in each trial can help explain some of the heterogeneity.
 
 Let's run a meta-regression using the `metareg()` function.
 
