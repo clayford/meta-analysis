@@ -24,18 +24,18 @@ knitr:
 
 ## What is Meta-Analysis?
 
-A study about studies.
+::: {.incremental}
 
-Refers to the analysis of analyses. (Glass, 1976)
+- A study about studies.
 
-A systematic literature review that uses statistics to **combine results** and achieve greater generalizability of findings than any single study. (Hothorn and Everitt, 2014)
+- Refers to the analysis of analyses. (Glass, 1976)
 
-An attempt to **pool the results** of individual studies into a single analysis with the intention...    
+- A systematic literature review that uses statistics to **combine results** and achieve greater generalizability of findings than any single study. (Hothorn and Everitt, 2014)
 
-- to produce a message where before there was none, or 
-- to make the message clearer, or 
-- to resolve an apparent contradiction in messages, or 
-- to assess whether the message changes from subgroup to subgroup. (Senn, 2007)
+- An attempt to **pool the results** of individual studies into a single analysis with the intention to produce a message where before there was none, or
+make the message clearer. (Senn, 2007)
+
+:::
 
 <!-- Sometimes called _Cochrane Reviews_, due to the [Cochrane Library](https://www.cochranelibrary.com/) that maintains a collection of systematic reviews. -->
 
@@ -145,14 +145,14 @@ By default, the meta package functions return both estimates.
 
 ## Measures of heterogeneity
 
-```         
+```
 Quantifying heterogeneity (with 95%-CIs):
- tau^2 = 0.0564 [0.0000; 11.5467]; tau = 0.2376 [0.0000; 3.3980]
- I^2 = 25.1% [0.0%; 71.1%]; H = 1.16 [1.00; 1.86]
+ tau^2 = 0.2742 [0.0000; 5.8013]; tau = 0.5236 [0.0000; 2.4086]
+ I^2 = 29.3% [0.0%; 72.6%]; H = 1.19 [1.00; 1.91]
 
 Test of heterogeneity:
     Q d.f. p-value
- 4.00    3  0.2611
+ 5.66    4  0.2260
 ```
 - Null of heterogeneity test: studies come from a single homogeneous population.
 - $Q$: weighted sum of squared differences between study means and fixed effect estimate.
@@ -224,7 +224,12 @@ If many or all of the smaller studies exhibit significance while some of the lar
 
 ## Tests for asymmetry
 
-There are many tests available to examine whether asymmetry exists in a funnel plot. They are deployed with the `metabias()` function. Rule of thumb: don't use if you have fewer than 10 studies. (Sterne et al, 2011)
+There are many tests available to examine whether asymmetry exists in a funnel plot. They are deployed with the `metabias()` function. 
+
+::: {.callout-note}
+Two rules of thumb: (1) don't use if you have fewer than 10 studies (Sterne et al, 2011) and (2) avoid if you have high heterogeneity ($I^2 > 75\%$) (Harrer et al, 2021) . 
+:::
+
 
 Null hypothesis: no association between effect size and precision.
 

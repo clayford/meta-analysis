@@ -44,9 +44,9 @@ There are many more arguments available! Let's run a basic meta-analysis and loo
 
 ```{r}
 ma1 <- metacont(n.e = n.psyc, mean.e = mean.psyc, sd.e = sd.psyc,
-               n.c = n.cont, mean.c = mean.cont, sd.c = sd.cont,
-               data = Fleiss1993cont, studlab = paste(study, year),
-               sm = "MD")  # summary measure: mean difference
+                n.c = n.cont, mean.c = mean.cont, sd.c = sd.cont,
+                data = Fleiss1993cont, studlab = paste(study, year),
+                sm = "MD")  # summary measure: mean difference
 summary(ma1)
 ```
 
@@ -89,7 +89,7 @@ se <- sqrt((Davis$sd.psyc^2)/(Davis$n.psyc) + (Davis$sd.cont^2)/(Davis$n.cont))
 se
 ```
 
-Calculate 95% confidence interval using standard normal distribution (1.96).
+Calculate 95% confidence interval using standard normal distribution N(0,1) (1.96).
 
 ```{r}
 dm + c(-1,1) * se * qnorm(p = 0.975)
@@ -109,7 +109,7 @@ Common effect model  -0.7094 [-1.2585; -0.1603] -2.53  0.0113
 
 ```
 
-The pooled estimate is a _weighted mean_, where the weights are the inverse of the study variances. Why not just take the regular mean of all the difference-in-means? Because some studies are bigger and more precise and should count more when calculating the mean.
+The pooled estimate is a _weighted mean_, where the weights are the inverse of the study variances. Why not just take the regular mean of all the difference-in-means? Because some studies are bigger and/or more precise and should count more when calculating the mean.
 
 First calculate all difference in means.
 
@@ -173,7 +173,7 @@ pooled_var <- 1/sum(weights)
 pooled_var
 ```
 
-We can use this to derive the 95% confidence interval of the pooled estimate. Again calculated using standard normal distribution (1.96).
+We use this to derive the 95% confidence interval of the pooled estimate. Again calculated using standard normal distribution, N(0,1) (1.96).
 
 ```{r}
 pooled_dm + c(-1,1)*sqrt(pooled_var)*qnorm(0.975)
@@ -194,7 +194,7 @@ z <- pooled_dm/sqrt(pooled_var)
 z
 ```
 
-The p-value is the two-sided probability of getting a test statistic that big or bigger (or that small or smaller) assuming the difference in means is really 0.
+The z-value test statistic is assumed to be standard N(0,1). The p-value is the two-sided probability of getting a test statistic that big or bigger (or that small or smaller) assuming the difference in means is really 0.
 
 ```{r}
 pnorm(q = z) * 2
@@ -234,6 +234,7 @@ ma1$tau2
 This is added to the variances when calculating the weights, as follows:
 
 ```{r}
+# Fixed effect model: weights <- 1/var_all
 weights_r <- 1/(var_all + ma1$tau2)
 weights_r
 ```
@@ -261,7 +262,7 @@ pooled_var_r <- 1/sum(weights_r)
 pooled_var_r
 ```
 
-We can use this to derive the 95% confidence interval of the pooled random effect estimate.
+We can use this to derive the 95% confidence interval of the pooled random effect estimate. Again calculated using standard normal distribution, N(0,1) (1.96).
 
 ```{r}
 pooled_dm_r + c(-1,1)*sqrt(pooled_var_r)*qnorm(0.975)
@@ -287,9 +288,9 @@ The p-value is the two-sided probability of getting a test statistic that big or
 pnorm(z_r) * 2
 ```
 
-### Derive the weights
+### Derive the weights reported in summary
 
-Recall the meta-analysis output. Notice the common and random weights are expressed as percentages. Also notice the random weights are bigger for smaller studies compared to the common weights. 
+Recall the meta-analysis output. Notice the common and random weights are expressed as percentages. Also notice the random weights are bigger for smaller studies compared to the common weights. The weights sum to 100%.
 
 ```
                   MD             95%-CI %W(common) %W(random)
@@ -335,18 +336,20 @@ Q is the weighted sum of squares about the fixed effect pooled estimate, where k
 
 $$Q = \sum w_k(\hat{\theta}_k - \hat{\theta}_{F})^2 $$
 
-We can calculate Q using previously calculated measures (using the weights, difference in means, and the pooled difference in means). 
+We can calculate Q using previously calculated measures (using the fixed-effect weights, difference in means, and the fixed-effect pooled difference in means). 
 
 ```{r}
 Q <- sum(weights * (dm_all - pooled_dm)^2)
 Q
 ```
 
-Under the null that studies come from a single homogeneous population, the Q statistic has a chi-square distribution with K-1 degrees of freedom. We have 5 studies, so K = 4.
+Under the null hypothesis that studies come from a single homogeneous population, the Q statistic has a chi-square distribution with K-1 degrees of freedom. We have 5 studies, so K = 4. The following calculates the probability of exceeding 5.66 in a chi-square distribution with 4 degrees of freedom. 
 
 ```{r}
 pchisq(q = Q, df = 5 - 1, lower.tail = FALSE)
 ```
+
+If the null hypothesis is true, we have probability of about 0.23 of seeing a Q value greater than 5.66. We don't have enough evidence to overcome the supposition of a homogeneous population.
 
 I^2 is derived from Q. I^2 tells us what proportion of the observed variance in the studies is likely to remain if we could somehow remove the sampling error. 
 
@@ -404,7 +407,7 @@ If running this in R Markdown, the file is saved where the Rmd file is located. 
 
 ```{r}
 forest(ma1, 
-       filename = "forest.png",    # name of file
+       # filename = "forest.png",    # name of file
        sortvar = -TE,     
        random = FALSE,    
        label.e = "Psychotherapy",
@@ -478,7 +481,6 @@ forest(ma2,
        label.left = "Favors Vitamin D", 
        label.right = "Favors Control",
        smlab = "Risk ratio\n(95% CI)",
-       overall = TRUE,
        test.overall.common = TRUE,
        print.Q = TRUE,
        xlim = c(0.2, 5),
@@ -560,12 +562,18 @@ Random effects model 3.7519 [2.8052; 5.0182]  8.91 < 0.0001
 Let's check for publication bias (small study effects) using a funnel plot.
 
 ```{r}
-funnel(ma3, random = FALSE)
+funnel(ma3)
 ```
+
+The triangle is the 95% confidence limits around the common effect estimate for each standard error on the y-axis. 
 
 The dashed line in the middle of the triangle is the common effect estimate. The dotted line is the random effect estimate. Either or both can be suppressed by setting `common` and/or `random` to FALSE. 
 
-Create Contour-Enhanced Funnel Plot. Set `type = "contour"`.
+Create Contour-Enhanced Funnel Plot. Set `type = "contour"`. The white triangle is centered over 1, which implies no difference in odds. The shaded regions represent areas where the null of no difference (OR = 1) would be rejected at three levels:
+
+1. 0.1 < p < 0.05
+2. 0.05 < p < 0.01
+3. p < 0.01
 
 ```{r}
 funnel(ma3, type = "contour")
@@ -648,7 +656,6 @@ ma4 <- metacont(n.e = Ne, mean.e = Me, sd.e = Se,
                 data = Poole2003,
                 studlab = paste(author, year), 
                 sm = "MD")
-summary(ma4)
 ```
 
 Get a warning because some studies have 0 for standard error.
@@ -665,13 +672,13 @@ summary(ma4)
 
 The mucolytic agents seem to help reduce acute exacerbations per month. There does seem to be significant heterogeneity according to the Q and I^2 statistics. But tau^2 is pretty small.
 
-The forest plot reveals one very uncertain study (the first study). Likely the source of the heterogeneity. (The standard deviations of 3.76 and 4.58 almost seems like typos compared to the other studies.)
+The forest plot reveals one very uncertain study (the first study). The standard deviations of 3.76 and 4.58 almost seems like typos compared to the other studies.
 
 ```{r}
 forest(ma4)
 ```
 
-Let's decrease the x limits to zoom in on the other studies.
+Let's decrease the x limits to zoom in on the other studies. Easier to see the variation in results between studies. 
 
 ```{r}
 forest(ma4, xlim = c(-0.5, 0.5))
@@ -707,7 +714,7 @@ Within groups  93.22   15 < 0.0001
 
 ```
 
-The results for the fixed effect model shows that between-group heterogeneity (Q = 12.55) is statistically significant. However the fixed effect estimates (-0.13, short duration; -0.06, long duration) are not that different. The difference is significant _but may not be clinically meaningful_. The common effect model also tests for within group heterogeneity (Q = 93.22). This is also significant. But based on the forest plot not sure it's clinically meaningful.
+The results for the fixed effect model shows that between-group heterogeneity (Q = 12.55) is statistically significant. However the fixed effect estimates (-0.13, short duration; -0.06, long duration) are not that different. The difference is significant _but may not be clinically meaningful_. The common effect model also tests for within group heterogeneity (Q = 93.22). This is also significant. 
 
 ### random effects model
 
@@ -766,7 +773,7 @@ Looks like serum cholesterol reduction is expected to decrease IHD events by abo
 forest(ma5)
 ```
 
-The degree of heterogeneity between studies seems moderate. Perhaps the mean cholesterol reduction in each trial can help explain some of the heterogeneity.
+Perhaps the mean cholesterol reduction in each trial can help explain some of the heterogeneity.
 
 Let's run a meta-regression using the `metareg()` function.
 
