@@ -407,7 +407,7 @@ If running this in R Markdown, the file is saved where the Rmd file is located. 
 
 ```{r}
 forest(ma1, 
-       # filename = "forest.png",    # name of file
+       filename = "forest.png",    # name of file
        sortvar = -TE,     
        random = FALSE,    
        label.e = "Psychotherapy",
